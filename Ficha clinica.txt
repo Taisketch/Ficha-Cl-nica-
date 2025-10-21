@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ficha Clínica Acupuntura Completa</title>
+    <!-- Carga de Tailwind CSS para el estilo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Librería SheetJS para manejo de archivos Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Estilos personalizados para un toque profesional */
+        :root {
+            --primary-color: #3B82F6; /* blue-500 */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* gray-100 */
+        }
+        .card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+        }
+        .tab-button.active { 
+            background-color: var(--primary-color); 
+            color: white; 
+            border-bottom-color: var(--primary-color);
+        }
+        .section-header { 
+            border-left: 4px solid var(--primary-color); 
+            padding-left: 0.75rem; 
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .symptom-card {
+            @apply p-4 border border-gray-300 rounded-lg bg-white shadow;
+        }
+        .symptom-title {
+            @apply font-bold text-lg text-gray-800 mb-3 border-b border-gray-200 pb-2;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="text-xl font-semibold text-gray-700">Cargando datos y autenticación...</div>
+    </div>
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+        <!-- Columna 1: Gestión de Fichas -->
+        <div class="lg:col-span-1 bg-white p-4 rounded-xl card h-fit sticky top-4">
+            <h2 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">Gestión de Fichas</h2>
+            
+            <!-- Botones de Importar/Nueva Ficha -->
+            <div class="space-y-3 mb-4">
+                <button id="new-ficha-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 shadow-md">
+                    ➕ Nueva Ficha
+                </button>
+                <input type="file" id="import-file-input" accept=".xlsx, .xls" class="hidden">
+                <button id="import-ficha-btn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 shadow-md">
+                    ⬆️ Importar Ficha (Excel)
+                </button>
+            </div>
+            
+            <div class="p-2 bg-gray-50 rounded-lg border">
+                <h3 class="text-md font-medium text-gray-700 mb-2">Fichas Guardadas (<span id="record-count">0</span>)</h3>
+                <ul id="fichas-list" class="space-y-2 max-h-96 overflow-y-auto">
+                    <li id="no-fichas" class="text-gray-500 text-center text-sm">Cargando...</li>
+                </ul>
+            </div>
+            <p id="user-info" class="mt-4 text-xs text-gray-500 break-all">
+                ID de Usuario: Cargando...
+            </p>
+        </div>
+
+        <!-- Columna 2: Formulario Principal -->
+        <div class="lg:col-span-3 bg-white p-6 rounded-xl card">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Ficha Clínica de Acupuntura</h1>
+            <p id="message-box" class="mt-3 text-sm hidden p-2 rounded-lg"></p>
+            <p class="text-sm text-gray-500 italic mb-4">Ficha Actual: <span id="current-record-name" class="font-semibold text-blue-600">Nueva Ficha</span></p>
+
+            <!-- Controles de Pestañas -->
+            <div class="flex border-b mb-6 space-x-2 overflow-x-auto">
+                <button data-tab="tab1" class="tab-button active py-2 px-4 rounded-t-lg font-medium text-sm transition-colors duration-150">1. Datos Personales</button>
+                <button data-tab="tab2" class="tab-button py-2 px-4 rounded-t-lg font-medium text-sm transition-colors duration-150">2. Lengua y Pulso</button>
+                <button data-tab="tab3" class="tab-button py-2 px-4 rounded-t-lg font-medium text-sm transition-colors duration-150">3. Síntomas</button>
+                <button data-tab="tab4" class="tab-button py-2 px-4 rounded-t-lg font-medium text-sm transition-colors duration-150">4. Zonas de Dolor</button>
+                <button data-tab="tab5" class="tab-button py-2 px-4 rounded-t-lg font-medium text-sm transition-colors duration-150">5. Seguimiento</button>
+            </div>
+            
+            <form id="ficha-form">
+                <input type="hidden" id="recordId" name="recordId">
+
+                <!-- PESTAÑA 1: DATOS PERSONALES Y ANTECEDENTES -->
+                <div id="tab1" class="tab-content space-y-6">
+                    <h2 class="section-header text-xl font-semibold text-gray-700 mb-4">1. Datos Generales y Antecedentes</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                <div>
+                                    <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre</label>
+                                    <input type="text" id="nombre" name="nombre" required class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out mt-1">
+                                </div>
+                                <div>
+                                    <label for="occupation" class="block text-sm font-medium text-gray-700">Ocupación</label>
+                                    <input type="text" id="occupation" name="occupation" class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out mt-1">
+                                </div>
+                                <div>
+                                    <label for="dob" class="block text-sm font-medium text-gray-700">Fecha de nacimiento</label>
+                                    <input type="date" id="dob" name="dob" class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out mt-1">
+                                </div>
+                                <div>
+                                    <label for="age" class="block text-sm font-medium text-gray-700">Edad</label>
+                                    <input type="number" id="age" name="age" min="0" class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out mt-1">
+                                </div>
+                                <div>
+                                    <label for="phone" class="block text-sm font-medium text-gray-700">Teléfono de contacto</label>
+                                    <input type="text" id="phone" name="phone" class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out mt-1">
+                                </div>
+                                <div>
+                                    <label for="email" class="block text-sm font-medium text-gray-700">Correo</label>
+                                    <input type="email" id="email" name="email" class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out mt-1">
+                                </div>
+                            </div>
+                             <div>
+                                <label for="motivo" class="block text-sm font-medium text-gray-700">Motivo de consulta</label>
+                                <textarea id="motivo" name="motivo" rows="3" required class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out mt-1"></textarea>
+                            </div>
+                        </div>
+                         <div class="lg:col-span-1">
+                            <div class="symptom-card h-fit">
+                                <h4 class="symptom-title">Foto del Paciente</h4>
+                                <div class="mt-2 text-center">
+                                    <div id="patient-photo-container" class="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-400">
+                                        <span id="patient-photo-placeholder" class="text-gray-500">No hay imagen</span>
+                                        <img id="patient-photo-preview" src="" alt="Foto del paciente" class="hidden w-full h-full object-cover rounded-lg">
+                                    </div>
+                                    <input type="file" id="patient-photo-input" accept="image/*" class="hidden">
+                                    <button type="button" id="upload-patient-photo-btn" class="mt-4 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 shadow-md">
+                                        📷 Subir Foto
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <h3 class="text-lg font-medium text-gray-700 border-b pb-1">Antecedentes y Hábitos</h3>
+                        <div class="grid grid-cols-1 gap-4">
+                            <textarea id="background" name="background" placeholder="Antecedentes personales" rows="3" class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out"></textarea>
+                            <textarea id="meds" name="meds" placeholder="Medicamentos de uso habitual" rows="2" class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out"></textarea>
+                            <textarea id="familyHistory" name="familyHistory" placeholder="Historial familiar" rows="2" class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out"></textarea>
+                            <textarea id="other" name="other" placeholder="Otros (antecedentes)" rows="2" class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out"></textarea>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg">
+                        <input type="text" id="sport" name="sport" placeholder="Deporte" class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out">
+                        <fieldset>
+                            <legend class="font-medium text-gray-700 mb-1">Fuma:</legend>
+                            <label class="inline-flex items-center"><input type="radio" name="smokes" value="Si" class="form-radio mr-2"> Sí</label>
+                            <label class="inline-flex items-center ml-4"><input type="radio" name="smokes" value="No" class="form-radio mr-2"> No</label>
+                        </fieldset>
+                        <fieldset>
+                            <legend class="font-medium text-gray-700 mb-1">Alcohol:</legend>
+                            <label class="inline-flex items-center"><input type="radio" name="alcohol" value="Si" class="form-radio mr-2"> Sí</label>
+                            <label class="inline-flex items-center ml-4"><input type="radio" name="alcohol" value="No" class="form-radio mr-2"> No</label>
+                        </fieldset>
+                    </div>
+                    <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg">
+                        <h3 class="text-xl font-bold text-yellow-800 mb-2">Consentimiento Informado</h3>
+                        <p class="text-sm text-yellow-700 mb-3">
+                            La Acupuntura consiste en la estimulación de puntos específicos del cuerpo, mediante la inserción de agujas finas, 
+                            estériles y desechables, con el fin de normalizar las funciones fisiológicas y de restaurar el desequilibrio del cuerpo. 
+                            
+                            La terapia en Medicina China no posee mayores efectos secundarios. Sin embargo, pueden presentarse algunos efectos 
+                            residuales y molestias como sensibilidad y hematomas en los puntos de inserción, mareos y somnolencia.  Por su parte, tras un 
+                            masaje con ventosas, la aparición de hematomas es normal.
+                        </p>
+                        <p class="text-sm text-yellow-700 mb-3">
+                            Mediante este consentimiento, confirmo estar en conocimiento sobre los efectos de la terapia. Además, entiendo que ésta no remplaza la atención médica si no es complementaria a la misma. Me comprometo a notificar al Terapeuta, si uso medicamentos como anticoagulante; si tengo historial clínico de presión alta o baja, desmayos, epilepsia, hemofilia, diabetes y en el caso de las mujeres, si estoy o pienso quedar embarazada.
+                        </p>
+                         <p class="text-sm text-yellow-700 mb-3">
+                            Declaro haber leído el documento en detalle, me han explicado la naturaleza y propósito del tratamiento, su duración y efectos. Mis preguntas han sido contestadas satisfactoriamente, por lo que doy mi autorización para iniciar mi tratamiento con Acupuntura.
+                        </p>
+                        <label class="inline-flex items-center mt-4">
+                            <input type="checkbox" id="consentAgreed" name="consentAgreed" class="form-checkbox h-5 w-5 text-blue-600 mr-2">
+                            <span class="ml-2 font-semibold text-gray-800">Doy mi autorización para iniciar el tratamiento.</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 2: LENGUA Y PULSO -->
+                <div id="tab2" class="tab-content hidden space-y-6">
+                    <h2 class="section-header text-xl font-semibold text-gray-700 mb-4">2. Diagnóstico por Lengua y Pulso</h2>
+                    <div class="p-4 border rounded-lg bg-gray-50">
+                        <h3 class="font-bold text-lg text-blue-500 mb-3">Parámetros de Lengua</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-4">
+                                <!-- Cuerpo de la Lengua -->
+                                <div class="symptom-card">
+                                    <h4 class="symptom-title">Cuerpo de la Lengua</h4>
+                                    <div class="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <label class="font-semibold">Color</label>
+                                            <select id="tongueColor" name="tongueColor" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-sm mt-1">
+                                                <option value="">-- Seleccionar --</option><option value="pálida">Pálida</option><option value="rosada">Rosada</option><option value="roja">Roja</option><option value="rojo carmesí">Rojo Carmesí</option><option value="violácea">Violácea/Púrpura</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="font-semibold">Forma</label>
+                                             <div class="mt-1 space-y-1">
+                                                <label class="flex items-center"><input type="checkbox" name="tongueShape" value="delgada" class="mr-2"> Delgada</label>
+                                                <label class="flex items-center"><input type="checkbox" name="tongueShape" value="hinchada" class="mr-2"> Hinchada/Obesa</label>
+                                                <label class="flex items-center"><input type="checkbox" name="tongueShape" value="dentada" class="mr-2"> Dentada</label>
+                                                <label class="flex items-center"><input type="checkbox" name="tongueShape" value="agrietada" class="mr-2"> Agrietada</label>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="font-semibold">Brillo</label>
+                                            <div class="mt-1"><label class="flex items-center"><input type="radio" name="tongueShine" value="brillante" class="mr-2"> Brillante</label><label class="flex items-center"><input type="radio" name="tongueShine" value="opaca" class="mr-2"> Opaca</label></div>
+                                        </div>
+                                        <div>
+                                            <label class="font-semibold">Textura</label>
+                                            <div class="mt-1"><label class="flex items-center"><input type="radio" name="tongueTexture" value="avejentada" class="mr-2"> Avejentada</label><label class="flex items-center"><input type="radio" name="tongueTexture" value="delicada" class="mr-2"> Delicada</label></div>
+                                        </div>
+                                         <div>
+                                            <label class="font-semibold">Lubricación</label>
+                                            <div class="mt-1"><label class="flex items-center"><input type="radio" name="tongueMoisture" value="normal" class="mr-2"> Normal</label><label class="flex items-center"><input type="radio" name="tongueMoisture" value="muy lubricada" class="mr-2"> Muy Lubricada</label><label class="flex items-center"><input type="radio" name="tongueMoisture" value="seca" class="mr-2"> Seca</label></div>
+                                        </div>
+                                         <div class="col-span-2">
+                                            <label class="font-semibold">Movimiento y Vitalidad</label>
+                                            <div class="grid grid-cols-2 mt-1">
+                                                <label class="flex items-center"><input type="checkbox" name="tongueMovement" value="rígida" class="mr-2"> Rígida</label>
+                                                <label class="flex items-center"><input type="checkbox" name="tongueMovement" value="flácida" class="mr-2"> Flácida</label>
+                                                <label class="flex items-center"><input type="checkbox" name="tongueMovement" value="temblorosa" class="mr-2"> Temblorosa</label>
+                                                <label class="flex items-center"><input type="checkbox" name="tongueMovement" value="cuchareada" class="mr-2"> Cuchareada</label>
+                                                <label class="flex items-center"><input type="checkbox" name="tongueMovement" value="desviada" class="mr-2"> Desviada</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Saburra -->
+                                <div class="symptom-card">
+                                    <h4 class="symptom-title">Saburra</h4>
+                                     <div class="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <label class="font-semibold">Color</label>
+                                            <select id="coatingColor" name="coatingColor" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-sm mt-1">
+                                                <option value="">-- Seleccionar --</option><option value="sin">Sin Saburra</option><option value="blanca">Blanca</option><option value="amarilla">Amarilla</option><option value="negra">Negra/Gris</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="font-semibold">Espesor</label>
+                                            <select id="coatingThickness" name="coatingThickness" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-sm mt-1">
+                                                <option value="">-- Seleccionar --</option><option value="fina">Fina</option><option value="gruesa">Gruesa</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-span-2">
+                                            <label class="font-semibold">Naturaleza</label>
+                                            <div class="grid grid-cols-2 mt-1">
+                                                <label class="flex items-center"><input type="checkbox" name="coatingNature" value="grasosa" class="mr-2"> Grasosa</label>
+                                                <label class="flex items-center"><input type="checkbox" name="coatingNature" value="pegajosa" class="mr-2"> Pegajosa</label>
+                                                <label class="flex items-center"><input type="checkbox" name="coatingNature" value="desprendible" class="mr-2"> Desprendible</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Columna 2: Observaciones y Foto -->
+                             <div class="space-y-4">
+                                <div class="symptom-card">
+                                     <h4 class="symptom-title">Observaciones por Zona</h4>
+                                    <div class="space-y-2">
+                                         <input type="text" id="obsPunta" name="obsPunta" placeholder="Punta (Corazón/Pulmón)" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-sm">
+                                        <input type="text" id="obsBordes" name="obsBordes" placeholder="Bordes (Hígado/VB)" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-sm">
+                                        <input type="text" id="obsLaterales" name="obsLaterales" placeholder="Centro (Bazo/Estómago)" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-sm">
+                                        <input type="text" id="obsRaiz" name="obsRaiz" placeholder="Raíz (Riñón)" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-sm">
+                                        <textarea id="obsGeneral" name="obsGeneral" rows="3" placeholder="Observaciones generales de la lengua..." class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-sm"></textarea>
+                                    </div>
+                                </div>
+                                <div class="symptom-card h-fit">
+                                     <h4 class="symptom-title">Foto de la Lengua</h4>
+                                    <div class="mt-2 text-center">
+                                        <div id="tongue-image-container" class="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-400">
+                                            <span id="tongue-image-placeholder" class="text-gray-500">No hay imagen</span>
+                                            <img id="tongue-image-preview" src="" alt="Foto de la lengua del paciente" class="hidden w-full h-full object-contain rounded-lg">
+                                        </div>
+                                        <input type="file" id="tongue-image-input" accept="image/*" class="hidden">
+                                        <button type="button" id="upload-tongue-image-btn" class="mt-4 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 shadow-md">
+                                            📷 Subir Foto
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4 border rounded-lg bg-gray-50">
+                        <h3 class="font-bold text-lg text-blue-500 mb-3">Parámetros de Pulso</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="space-y-4">
+                                <div>
+                                    <h4 class="font-semibold text-gray-700">Cualidades Básicas</h4>
+                                    <div class="grid grid-cols-2 gap-2 mt-1">
+                                        <select name="pulseVelocity" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-sm">
+                                            <option value="">Velocidad</option><option value="Lenta">LENTA (&lt;60)</option><option value="Normal">NORMAL (60-90)</option><option value="Rápida">RÁPIDA (&gt;90)</option>
+                                        </select>
+                                        <select name="pulseDepth" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-sm">
+                                            <option value="">Profundidad</option><option value="Superficial">Superficial</option><option value="Medio">Medio</option><option value="Profundo">Profundo</option>
+                                        </select>
+                                        <select name="pulseForce" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-sm">
+                                            <option value="">Fuerza</option><option value="Sin Fuerza">Sin Fuerza</option><option value="Fuerte">Fuerte</option>
+                                        </select>
+                                         <select name="pulseRhythm" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-sm">
+                                            <option value="">Ritmo</option><option value="Regular">Regular</option><option value="Anudado">Anudado</option><option value="Intermitente">Intermitente</option><option value="Apresurado">Apresurado</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="symptom-card bg-white">
+                                    <h4 class="symptom-title">Tipos de Pulso Patológico</h4>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                                        <label class="flex items-center"><input type="checkbox" name="pulseType" value="cuerda" class="mr-2"> De Cuerda</label>
+                                        <label class="flex items-center"><input type="checkbox" name="pulseType" value="resbaladizo" class="mr-2"> Resbaladizo</label>
+                                        <label class="flex items-center"><input type="checkbox" name="pulseType" value="rugoso" class="mr-2"> Rugoso/Áspero</label>
+                                        <label class="flex items-center"><input type="checkbox" name="pulseType" value="tenso" class="mr-2"> Tenso</label>
+                                        <label class="flex items-center"><input type="checkbox" name="pulseType" value="largo" class="mr-2"> Largo</label>
+                                        <label class="flex items-center"><input type="checkbox" name="pulseType" value="corto" class="mr-2"> Corto</label>
+                                        <label class="flex items-center"><input type="checkbox" name="pulseType" value="rebosante" class="mr-2"> Rebosante</label>
+                                        <label class="flex items-center"><input type="checkbox" name="pulseType" value="filiforme" class="mr-2"> Filiforme</label>
+                                        <label class="flex items-center"><input type="checkbox" name="pulseType" value="débil" class="mr-2"> Débil</label>
+                                    </div>
+                                </div>
+                                 <div class="symptom-card bg-white">
+                                    <h4 class="symptom-title">Tres Tesoros del Pulso</h4>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                                       <label class="flex items-center"><input type="checkbox" name="pulseTreasure" value="qi_estomago" class="mr-2"> Con Qi de Estómago</label>
+                                       <label class="flex items-center"><input type="checkbox" name="pulseTreasure" value="shen" class="mr-2"> Con Espíritu (Shen)</label>
+                                       <label class="flex items-center"><input type="checkbox" name="pulseTreasure" value="raiz" class="mr-2"> Con Raíz (Gen)</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-700">Posición (Derecha/Izquierda)</h4>
+                                <div class="grid grid-cols-5 gap-2 mt-2 text-center text-xs">
+                                    <span class="font-bold">&nbsp;</span>
+                                    <span class="font-bold col-span-2">DERECHA</span>
+                                    <span class="font-bold col-span-2">IZQUIERDA</span>
+                                    <span class="font-semibold self-center">CUN</span>
+                                    <input type="text" name="rightCun" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-xs text-center col-span-2" placeholder="P / IG">
+                                    <input type="text" name="leftCun" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-xs text-center col-span-2" placeholder="C / ID">
+                                    <span class="font-semibold self-center">GUAN</span>
+                                    <input type="text" name="rightGuan" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-xs text-center col-span-2" placeholder="B / E">
+                                    <input type="text" name="leftGuan" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-xs text-center col-span-2" placeholder="H / VB">
+                                    <span class="font-semibold self-center">CHI</span>
+                                    <input type="text" name="rightChi" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-xs text-center col-span-2" placeholder="MC / SJ">
+                                    <input type="text" name="leftChi" class="w-full p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ease-in-out text-xs text-center col-span-2" placeholder="R / V">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 3: CUESTIONARIO DE SÍNTOMAS -->
+                <div id="tab3" class="tab-content hidden space-y-4">
+                    <h2 class="section-header text-xl font-semibold text-gray-700 mb-4">3. Cuestionario de Síntomas</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        
+                        <div class="symptom-card">
+                            <h3 class="symptom-title">Frio / Calor</h3>
+                            <div class="space-y-1"><label class="flex items-center"><input type="radio" name="temp" value="Frio" class="form-radio mr-2"> Frio</label><label class="flex items-center"><input type="radio" name="temp" value="Calor" class="form-radio mr-2"> Calor</label><label class="flex items-center"><input type="radio" name="temp" value="Calor y Frio" class="form-radio mr-2"> Calor y frío</label></div>
+                        </div>
+
+                        <div class="symptom-card">
+                            <h3 class="symptom-title">Sudor</h3>
+                            <div class="grid grid-cols-2 gap-1">
+                                <label class="flex items-center"><input type="checkbox" name="sweat_suda" value="si" class="mr-2"> Si Suda</label>
+                                <label class="flex items-center"><input type="checkbox" name="sweat_suda" value="no" class="mr-2"> No Suda</label>
+                                <label class="flex items-center"><input type="checkbox" name="sweat_when" value="de día" class="mr-2"> De día</label>
+                                <label class="flex items-center"><input type="checkbox" name="sweat_when" value="de noche" class="mr-2"> De noche</label>
+                                <label class="flex items-center"><input type="checkbox" name="sweat_activity" value="en reposo" class="mr-2"> En reposo</label>
+                                <label class="flex items-center"><input type="checkbox" name="sweat_activity" value="en actividad" class="mr-2"> En actividad</label>
+                                <label class="flex items-center"><input type="checkbox" name="sweat_location" value="Manos" class="mr-2"> Manos</label>
+                                <label class="flex items-center"><input type="checkbox" name="sweat_location" value="Pies" class="mr-2"> Pies</label>
+                                <label class="flex items-center"><input type="checkbox" name="sweat_location" value="Cuello" class="mr-2"> Cuello</label>
+                                <label class="flex items-center"><input type="checkbox" name="sweat_location" value="Tórax" class="mr-2"> Tórax</label>
+                            </div>
+                            <input type="text" name="sweat_frequency" placeholder="Frecuencia/Obs." class="w-full mt-2 p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+
+                        <div class="symptom-card">
+                            <h3 class="symptom-title">Apetito / Hambre</h3>
+                            <div class="grid grid-cols-2 gap-1">
+                               <label class="flex items-center"><input type="checkbox" name="appetite_level" value="Poco apetito" class="mr-2"> Poco</label>
+                               <label class="flex items-center"><input type="checkbox" name="appetite_level" value="Mucho apetito" class="mr-2"> Mucho</label>
+                               <label class="flex items-center"><input type="checkbox" name="appetite_type" value="Hambre sin apetito" class="mr-2"> Hambre sin apetito</label>
+                               <label class="flex items-center"><input type="checkbox" name="appetite_type" value="Hambre con apetito" class="mr-2"> Hambre con apetito</label>
+                               <label class="flex items-center"><input type="checkbox" name="appetite_discomfort" value="Distension Post Prandial" class="mr-2"> Distensión</label>
+                               <label class="flex items-center"><input type="checkbox" name="appetite_discomfort" value="Pesadez Post Prandial" class="mr-2"> Pesadez</label>
+                            </div>
+                             <h4 class="font-semibold text-xs mt-2">Preferencia Sabor:</h4>
+                             <div class="grid grid-cols-3 gap-1">
+                                <label class="flex items-center"><input type="checkbox" name="appetite_flavor" value="Dulce" class="mr-2"> Dulce</label>
+                                <label class="flex items-center"><input type="checkbox" name="appetite_flavor" value="Picante" class="mr-2"> Picante</label>
+                                <label class="flex items-center"><input type="checkbox" name="appetite_flavor" value="Amargo" class="mr-2"> Amargo</label>
+                                <label class="flex items-center"><input type="checkbox" name="appetite_flavor" value="Acido" class="mr-2"> Ácido</label>
+                                <label class="flex items-center"><input type="checkbox" name="appetite_flavor" value="Salado" class="mr-2"> Salado</label>
+                                <label class="flex items-center"><input type="checkbox" name="appetite_flavor" value="Grasoso" class="mr-2"> Grasoso</label>
+                            </div>
+                        </div>
+
+                        <div class="symptom-card">
+                            <h3 class="symptom-title">Sed / Ingesta</h3>
+                            <div class="grid grid-cols-2 gap-1">
+                                <label class="flex items-center"><input type="checkbox" name="thirst_level" value="Ausencia sed" class="mr-2"> Ausencia</label>
+                                <label class="flex items-center"><input type="checkbox" name="thirst_level" value="Poca sed" class="mr-2"> Poca</label>
+                                <label class="flex items-center"><input type="checkbox" name="thirst_level" value="Sed insaciable" class="mr-2"> Insaciable</label>
+                                <label class="flex items-center"><input type="checkbox" name="thirst_type" value="Sed por beber a sorbos" class="mr-2"> Beber a sorbos</label>
+                                <label class="flex items-center"><input type="checkbox" name="thirst_type" value="boca seca solo humedecerla" class="mr-2"> Boca seca</label>
+                                <label class="flex items-center"><input type="checkbox" name="thirst_type" value="Sed sin deseo de tomar" class="mr-2"> Sed sin deseo</label>
+                            </div>
+                             <h4 class="font-semibold text-xs mt-2">Preferencia Temperatura:</h4>
+                             <div class="grid grid-cols-2 gap-1">
+                                <label class="flex items-center"><input type="checkbox" name="thirst_temp" value="Líquidos calientes" class="mr-2"> Calientes</label>
+                                <label class="flex items-center"><input type="checkbox" name="thirst_temp" value="Líquidos Fríos" class="mr-2"> Fríos</label>
+                            </div>
+                        </div>
+                        
+                        <div class="symptom-card">
+                            <h3 class="symptom-title">Heces</h3>
+                             <div class="grid grid-cols-2 gap-1">
+                                <label class="flex items-center"><input type="checkbox" name="stool_consistency" value="Diarrea" class="mr-2"> Diarrea</label>
+                                <label class="flex items-center"><input type="checkbox" name="stool_consistency" value="Estreñimiento" class="mr-2"> Estreñimiento</label>
+                                <label class="flex items-center"><input type="checkbox" name="stool_consistency" value="Pastosas" class="mr-2"> Pastosas</label>
+                                <label class="flex items-center"><input type="checkbox" name="stool_consistency" value="Secas" class="mr-2"> Secas</label>
+                                <label class="flex items-center"><input type="checkbox" name="stool_consistency" value="Duras" class="mr-2"> Duras</label>
+                                <label class="flex items-center"><input type="checkbox" name="stool_consistency" value="Blandas" class="mr-2"> Blandas</label>
+                                <label class="flex items-center"><input type="checkbox" name="stool_observation" value="con sangre" class="mr-2"> Con sangre</label>
+                                <label class="flex items-center"><input type="checkbox" name="stool_observation" value="con alimentos no digeridos" class="mr-2"> No digeridas</label>
+                                <label class="flex items-center"><input type="checkbox" name="stool_observation" value="con olor fuerte" class="mr-2"> Olor fuerte</label>
+                            </div>
+                            <input type="text" name="stool_color" placeholder="Color/Frecuencia" class="w-full mt-2 p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+
+                        <div class="symptom-card">
+                            <h3 class="symptom-title">Orina</h3>
+                            <div class="grid grid-cols-2 gap-1">
+                                <label class="flex items-center"><input type="checkbox" name="urine_freq" value="Escasa" class="mr-2"> Escasa</label>
+                                <label class="flex items-center"><input type="checkbox" name="urine_freq" value="Frecuente" class="mr-2"> Frecuente</label>
+                                <label class="flex items-center"><input type="checkbox" name="urine_freq" value="Abundante" class="mr-2"> Abundante</label>
+                                <label class="flex items-center"><input type="checkbox" name="urine_control" value="Incontinencia" class="mr-2"> Incontinencia</label>
+                                <label class="flex items-center"><input type="checkbox" name="urine_sensation" value="sin dolor" class="mr-2"> Sin dolor</label>
+                                <label class="flex items-center"><input type="checkbox" name="urine_sensation" value="con dolor" class="mr-2"> Con dolor</label>
+                                <label class="flex items-center"><input type="checkbox" name="urine_stream" value="Goteo" class="mr-2"> Goteo</label>
+                                <label class="flex items-center"><input type="checkbox" name="urine_stream" value="dificultad al orinar" class="mr-2"> Dificultad</label>
+                                <label class="flex items-center"><input type="checkbox" name="urine_stream" value="suspensión al orinar" class="mr-2"> Suspensión</label>
+                            </div>
+                            <input type="text" name="urine_color" placeholder="Color" class="w-full mt-2 p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+                        
+                        <div class="symptom-card md:col-span-3">
+                            <h3 class="symptom-title">Menstruación</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                    <h4 class="font-semibold text-xs mb-1">Ciclo</h4>
+                                    <label class="flex items-center"><input type="checkbox" name="menses_cycle" value="Adelantada" class="mr-2"> Adelantada</label>
+                                    <label class="flex items-center"><input type="checkbox" name="menses_cycle" value="Retrasada" class="mr-2"> Retrasada</label>
+                                    <label class="flex items-center"><input type="checkbox" name="menses_cycle" value="Irregular" class="mr-2"> Irregular</label>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-xs mb-1">Cantidad</h4>
+                                    <label class="flex items-center"><input type="checkbox" name="menses_amount" value="Hipermenorrea" class="mr-2"> Hipermenorrea</label>
+                                    <label class="flex items-center"><input type="checkbox" name="menses_amount" value="Hipomenorrea" class="mr-2"> Hipomenorrea</label>
+                                    <label class="flex items-center"><input type="checkbox" name="menses_amount" value="Amenorrea" class="mr-2"> Amenorrea</label>
+                                    <label class="flex items-center"><input type="checkbox" name="menses_amount" value="Metrorragia" class="mr-2"> Metrorragia</label>
+                                </div>
+                                 <div>
+                                    <h4 class="font-semibold text-xs mb-1">Color y Textura</h4>
+                                    <label class="flex items-center"><input type="checkbox" name="menses_texture" value="Pálido y fino" class="mr-2"> Pálido y fino</label>
+                                    <label class="flex items-center"><input type="checkbox" name="menses_texture" value="Parduzco espeso" class="mr-2"> Parduzco espeso</label>
+                                    <label class="flex items-center"><input type="checkbox" name="menses_texture" value="Morado y coágulos" class="mr-2"> Morado y coágulos</label>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-xs mb-1">Otros</h4>
+                                    <label class="flex items-center"><input type="checkbox" name="menses_other" value="Dismenorrea" class="mr-2"> Dismenorrea</label>
+                                    <input type="text" name="menses_details" placeholder="Menarquía/Menopausia/ACO" class="w-full mt-1 p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="symptom-card md:col-span-2">
+                            <h3 class="symptom-title">Emociones y Sueño</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                                <div>
+                                    <h4 class="font-semibold text-xs mb-2">Emociones</h4>
+                                    <div class="space-y-1">
+                                        <label class="flex items-center"><input type="checkbox" name="emotion_type" value="Rabia" class="mr-2"> Rabia</label>
+                                        <label class="flex items-center"><input type="checkbox" name="emotion_type" value="Frustración" class="mr-2"> Frustración</label>
+                                        <label class="flex items-center"><input type="checkbox" name="emotion_type" value="Pena" class="mr-2"> Pena</label>
+                                        <label class="flex items-center"><input type="checkbox" name="emotion_type" value="Ansiedad" class="mr-2"> Ansiedad</label>
+                                        <label class="flex items-center"><input type="checkbox" name="emotion_type" value="Miedo" class="mr-2"> Miedo</label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-xs mb-2">Sueño</h4>
+                                    <div class="space-y-1">
+                                        <label class="flex items-center"><input type="checkbox" name="sleep_quality" value="Inquieto y no duerme" class="mr-2"> Inquieto, no duerme</label>
+                                        <label class="flex items-center"><input type="checkbox" name="sleep_quality" value="inquieto y pesadilla" class="mr-2"> Inquieto, pesadillas</label>
+                                        <label class="flex items-center"><input type="checkbox" name="sleep_quality" value="Inquieto y pesadez" class="mr-2"> Inquieto, pesadez</label>
+                                        <label class="flex items-center"><input type="checkbox" name="sleep_quality" value="dificultad dormir" class="mr-2"> Dificultad p/dormir</label>
+                                        <label class="flex items-center"><input type="checkbox" name="sleep_quality" value="Despierta fácil" class="mr-2"> Despierta fácil</label>
+                                        <label class="flex items-center"><input type="checkbox" name="sleep_quality" value="sin poder dormir" class="mr-2"> No puede volver a dormir</label>
+                                    </div>
+                                    <input type="text" name="sleep_hours" placeholder="Horas de sueño" class="w-full mt-2 p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="symptom-card">
+                            <h3 class="symptom-title">Oídos y Ojos</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <h4 class="font-semibold text-xs">Oídos</h4>
+                                    <div class="space-y-1 mt-1">
+                                        <label class="flex items-center"><input type="checkbox" name="ear_symptom" value="Tinitus" class="mr-2"> Tinitus</label>
+                                        <label class="flex items-center"><input type="checkbox" name="ear_symptom" value="Sordera" class="mr-2"> Sordera</label>
+                                        <label class="flex items-center"><input type="checkbox" name="ear_symptom" value="Perdida Audición" class="mr-2"> Pérdida Audición</label>
+                                    </div>
+                                </div>
+                                 <div>
+                                    <h4 class="font-semibold text-xs">Ojos</h4>
+                                    <div class="space-y-1 mt-1">
+                                        <label class="flex items-center"><input type="checkbox" name="eye_symptom" value="Ojos Secos" class="mr-2"> Secos</label>
+                                        <label class="flex items-center"><input type="checkbox" name="eye_symptom" value="Ojos Rojos" class="mr-2"> Rojos</label>
+                                        <label class="flex items-center"><input type="checkbox" name="eye_symptom" value="Visión borrosa" class="mr-2"> Visión borrosa</label>
+                                        <label class="flex items-center"><input type="checkbox" name="eye_symptom" value="Vértigo" class="mr-2"> Vértigo</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="symptom-card md:col-span-3">
+                             <h3 class="symptom-title">Energía</h3>
+                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <h4 class="font-semibold text-xs">Nivel bajo de energía:</h4>
+                                    <div class="space-y-1 mt-1">
+                                      <label class="flex items-center"><input type="checkbox" name="energy_level" value="mañana" class="mr-2"> En la mañana</label>
+                                      <label class="flex items-center"><input type="checkbox" name="energy_level" value="tarde-noche" class="mr-2"> En la tarde-noche</label>
+                                      <label class="flex items-center"><input type="checkbox" name="energy_level" value="todo el día" class="mr-2"> Durante todo el día</label>
+                                    </div>
+                                </div>
+                                <div class="text-xs">
+                                    <label class="font-semibold">¿Con las comidas?</label>
+                                    <div class="space-y-1 mt-1">
+                                      <label class="flex items-center"><input type="radio" name="energy_food" value="mejora" class="mr-2"> Mejora</label>
+                                      <label class="flex items-center"><input type="radio" name="energy_food" value="empeora" class="mr-2"> Empeora</label>
+                                    </div>
+                                </div>
+                                <div class="text-xs">
+                                    <label class="font-semibold">¿Con el descanso?</label>
+                                    <div class="space-y-1 mt-1">
+                                      <label class="flex items-center"><input type="radio" name="energy_rest" value="mejora" class="mr-2"> Mejora</label>
+                                      <label class="flex items-center"><input type="radio" name="energy_rest" value="empeora" class="mr-2"> Empeora</label>
+                                    </div>
+                                </div>
+                             </div>
+                        </div>
+
+                    </div>
+                </div>
+                
+                <!-- PESTAÑA 4: ZONAS DE DOLOR -->
+                <div id="tab4" class="tab-content hidden space-y-6">
+                    <h2 class="section-header text-xl font-semibold text-gray-700 mb-4">4. Zonas y Nivel de Dolor</h2>
+                    <div class="grid grid-cols-1 gap-6">
+                        <div>
+                            <label for="painDescription" class="block text-sm font-medium text-gray-700">Descripción de Zonas de Dolor</label>
+                            <textarea id="painDescription" name="painDescription" rows="12" class="w-full p-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all duration-200 ease-in-out mt-1" placeholder="Describa la ubicación, tipo e irradiación del dolor aquí..."></textarea>
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-gray-700">
+                                    Nivel de Dolor (0 a 10): <span id="painValue" class="font-bold text-blue-600">5</span>
+                                </label>
+                                <input type="range" id="painLevel" name="painLevel" min="0" max="10" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-1">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 5: SEGUIMIENTO -->
+                 <div id="tab5" class="tab-content hidden space-y-6">
+                    <h2 class="section-header text-xl font-semibold text-gray-700 mb-4">5. Seguimiento de Síntomas y Tratamiento</h2>
+                    <div class="space-y-4">
+                        <!-- Headers -->
+                        <div class="grid grid-cols-12 gap-2 text-xs font-bold text-gray-600 px-2">
+                            <div class="col-span-1">Sesión</div>
+                            <div class="col-span-2">Fecha</div>
+                            <div class="col-span-5">Síntomas / Evolución</div>
+                            <div class="col-span-2">Estado</div>
+                            <div class="col-span-2">Tratamiento</div>
+                        </div>
+                        <!-- Session Rows -->
+                        <div id="session-rows" class="space-y-2">
+                           <!-- Las filas se generarán con JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Botones de Acción (Guardar/Eliminar/Exportar) -->
+                <div class="mt-8 flex justify-end space-x-4">
+                    <button type="button" id="export-ficha-btn" class="bg-blue-300 hover:bg-blue-400 text-white font-bold py-3 px-6 rounded-lg transition duration-150 shadow-md">
+                        📥 Exportar Ficha (Excel)
+                    </button>
+                    <button type="button" id="delete-ficha-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition duration-150 shadow-md hidden" disabled>
+                        Eliminar Ficha
+                    </button>
+                    <button type="submit" id="save-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg transition duration-150 shadow-lg">
+                        💾 Guardar Ficha
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, query, doc, setDoc, deleteDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let db, auth, userId = '', currentRecordId = null, tongueImageDataUrl = null;
+
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const userInfo = document.getElementById('user-info');
+        const fichasList = document.getElementById('fichas-list');
+        const fichaForm = document.getElementById('ficha-form');
+        const messageBox = document.getElementById('message-box');
+        const noFichasMessage = document.getElementById('no-fichas');
+        const newFichaBtn = document.getElementById('new-ficha-btn');
+        const deleteFichaBtn = document.getElementById('delete-ficha-btn');
+        const exportFichaBtn = document.getElementById('export-ficha-btn');
+        const importFileInput = document.getElementById('import-file-input');
+        const importFichaBtn = document.getElementById('import-ficha-btn');
+        const recordCountSpan = document.getElementById('record-count');
+        const currentRecordNameSpan = document.getElementById('current-record-name');
+        const saveButton = document.getElementById('save-button');
+        const painValueSpan = document.getElementById('painValue');
+        const painLevelInput = document.getElementById('painLevel');
+        const uploadTongueImageBtn = document.getElementById('upload-tongue-image-btn');
+        const tongueImageInput = document.getElementById('tongue-image-input');
+        const tongueImagePreview = document.getElementById('tongue-image-preview');
+        const tongueImagePlaceholder = document.getElementById('tongue-image-placeholder');
+        const sessionRowsContainer = document.getElementById('session-rows');
+        const uploadPatientPhotoBtn = document.getElementById('upload-patient-photo-btn');
+        const patientPhotoInput = document.getElementById('patient-photo-input');
+        const patientPhotoPreview = document.getElementById('patient-photo-preview');
+        const patientPhotoPlaceholder = document.getElementById('patient-photo-placeholder');
+
+        let patientPhotoDataUrl = null;
+
+
+        function showMessage(text, isError = false) {
+            messageBox.textContent = text;
+            messageBox.className = 'p-2 rounded-lg text-sm'; // Reset classes
+            if (isError) {
+                messageBox.classList.add('bg-red-100', 'text-red-700');
+            } else {
+                messageBox.classList.add('bg-green-100', 'text-green-700');
+            }
+            setTimeout(() => { messageBox.classList.add('hidden'); }, 5000);
+        }
+
+        const getCheckedValues = (name) => Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(c => c.value);
+        const setCheckedValue = (name, value) => { document.querySelectorAll(`input[name="${name}"]`).forEach(el => el.checked = el.value === value); };
+        const setCheckboxGroup = (name, values) => { 
+            const valuesArray = Array.isArray(values) ? values : (typeof values === 'string' ? values.split(',') : []);
+            document.querySelectorAll(`input[name="${name}"]`).forEach(el => el.checked = valuesArray.includes(el.value)); 
+        };
+
+        function getFormData() {
+            const personal = {
+                nombre: document.getElementById('nombre').value.trim(),
+                occupation: document.getElementById('occupation').value.trim(),
+                dob: document.getElementById('dob').value,
+                age: document.getElementById('age').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('email').value,
+                motivo: document.getElementById('motivo').value.trim(),
+                background: document.getElementById('background').value.trim(),
+                meds: document.getElementById('meds').value.trim(),
+                familyHistory: document.getElementById('familyHistory').value.trim(),
+                other: document.getElementById('other').value.trim(),
+                sport: document.getElementById('sport').value.trim(),
+                smokes: document.querySelector('input[name="smokes"]:checked')?.value || '',
+                alcohol: document.querySelector('input[name="alcohol"]:checked')?.value || '',
+                consentAgreed: document.getElementById('consentAgreed').checked,
+                patientPhoto: patientPhotoDataUrl,
+            };
+
+            const mtc = {
+                // Lengua
+                tongueColor: document.getElementById('tongueColor').value,
+                tongueShape: getCheckedValues('tongueShape'),
+                tongueShine: document.querySelector('input[name="tongueShine"]:checked')?.value || '',
+                tongueTexture: document.querySelector('input[name="tongueTexture"]:checked')?.value || '',
+                tongueMoisture: document.querySelector('input[name="tongueMoisture"]:checked')?.value || '',
+                tongueMovement: getCheckedValues('tongueMovement'),
+                coatingColor: document.getElementById('coatingColor').value,
+                coatingThickness: document.getElementById('coatingThickness').value,
+                coatingNature: getCheckedValues('coatingNature'),
+                obsPunta: document.getElementById('obsPunta').value.trim(),
+                obsBordes: document.getElementById('obsBordes').value.trim(),
+                obsLaterales: document.getElementById('obsLaterales').value.trim(),
+                obsRaiz: document.getElementById('obsRaiz').value.trim(),
+                obsGeneral: document.getElementById('obsGeneral').value.trim(),
+                tongueImage: tongueImageDataUrl,
+                // Pulso
+                pulseVelocity: document.querySelector('select[name="pulseVelocity"]').value,
+                pulseRhythm: document.querySelector('select[name="pulseRhythm"]').value,
+                pulseDepth: document.querySelector('select[name="pulseDepth"]').value,
+                pulseForce: document.querySelector('select[name="pulseForce"]').value,
+                pulseType: getCheckedValues('pulseType'),
+                pulseTreasure: getCheckedValues('pulseTreasure'),
+                pulsePositions: {
+                    rightCun: document.querySelector('input[name="rightCun"]').value.trim(),
+                    rightGuan: document.querySelector('input[name="rightGuan"]').value.trim(),
+                    rightChi: document.querySelector('input[name="rightChi"]').value.trim(),
+                    leftCun: document.querySelector('input[name="leftCun"]').value.trim(),
+                    leftGuan: document.querySelector('input[name="leftGuan"]').value.trim(),
+                    leftChi: document.querySelector('input[name="leftChi"]').value.trim(),
+                }
+            };
+            
+            const general = {
+                temp: document.querySelector('input[name="temp"]:checked')?.value || '',
+                sweat_suda: getCheckedValues('sweat_suda'),
+                sweat_when: getCheckedValues('sweat_when'),
+                sweat_activity: getCheckedValues('sweat_activity'),
+                sweat_location: getCheckedValues('sweat_location'),
+                sweat_frequency: document.querySelector('input[name="sweat_frequency"]').value.trim(),
+                appetite_level: getCheckedValues('appetite_level'),
+                appetite_type: getCheckedValues('appetite_type'),
+                appetite_discomfort: getCheckedValues('appetite_discomfort'),
+                appetite_flavor: getCheckedValues('appetite_flavor'),
+                thirst_level: getCheckedValues('thirst_level'),
+                thirst_type: getCheckedValues('thirst_type'),
+                thirst_temp: getCheckedValues('thirst_temp'),
+                stool_consistency: getCheckedValues('stool_consistency'),
+                stool_observation: getCheckedValues('stool_observation'),
+                stool_color: document.querySelector('input[name="stool_color"]').value.trim(),
+                urine_freq: getCheckedValues('urine_freq'),
+                urine_control: getCheckedValues('urine_control'),
+                urine_sensation: getCheckedValues('urine_sensation'),
+                urine_stream: getCheckedValues('urine_stream'),
+                urine_color: document.querySelector('input[name="urine_color"]').value.trim(),
+                menses_cycle: getCheckedValues('menses_cycle'),
+                menses_amount: getCheckedValues('menses_amount'),
+                menses_texture: getCheckedValues('menses_texture'),
+                menses_other: getCheckedValues('menses_other'),
+                menses_details: document.querySelector('input[name="menses_details"]').value.trim(),
+                emotion_type: getCheckedValues('emotion_type'),
+                sleep_quality: getCheckedValues('sleep_quality'),
+                sleep_hours: document.querySelector('input[name="sleep_hours"]').value.trim(),
+                ear_symptom: getCheckedValues('ear_symptom'),
+                eye_symptom: getCheckedValues('eye_symptom'),
+                energy_level: getCheckedValues('energy_level'),
+                energy_food: document.querySelector('input[name="energy_food"]:checked')?.value || '',
+                energy_rest: document.querySelector('input[name="energy_rest"]:checked')?.value || '',
+                painLevel: document.getElementById('painLevel').value,
+                painDescription: document.getElementById('painDescription').value.trim()
+            };
+
+            const seguimiento = [];
+            for (let i = 1; i <= 10; i++) {
+                const sessionData = {
+                    date: document.getElementById(`session_${i}_date`).value,
+                    symptoms: document.getElementById(`session_${i}_symptoms`).value,
+                    status: document.getElementById(`session_${i}_status`).value,
+                    treatment: document.getElementById(`session_${i}_treatment`).value,
+                };
+                seguimiento.push(sessionData);
+            }
+
+            return { personal, mtc, general, seguimiento };
+        }
+        
+        function fillForm(data) {
+            if (!data.personal || !data.mtc || !data.general) {
+                 showMessage("Error: El archivo importado no tiene la estructura de ficha clínica esperada.", true);
+                 return;
+            }
+            const setInputValue = (id, value) => { const el = document.getElementById(id); if (el) el.value = value || ''; };
+            const setInputByName = (name, value) => { const el = document.querySelector(`[name="${name}"]`); if (el) el.value = value || ''; };
+            fichaForm.reset();
+            currentRecordId = data.id;
+            document.getElementById('recordId').value = data.id || '';
+
+            const p = data.personal || {};
+            Object.keys(p).forEach(key => {
+                 if (key === 'patientPhoto') {
+                     if (p.patientPhoto) {
+                        patientPhotoDataUrl = p.patientPhoto;
+                        patientPhotoPreview.src = patientPhotoDataUrl;
+                        patientPhotoPreview.classList.remove('hidden');
+                        patientPhotoPlaceholder.classList.add('hidden');
+                    } else {
+                        patientPhotoDataUrl = null;
+                        patientPhotoPreview.src = '';
+                        patientPhotoPreview.classList.add('hidden');
+                        patientPhotoPlaceholder.classList.remove('hidden');
+                    }
+                } else {
+                    const el = document.getElementById(key);
+                    if (el) {
+                        if (el.type === 'checkbox') el.checked = p[key];
+                        else el.value = p[key] || '';
+                    } else {
+                        setCheckedValue(key, p[key]);
+                    }
+                }
+            });
+
+            const m = data.mtc || {};
+            Object.keys(m).forEach(key => {
+                if (key === 'pulsePositions') {
+                    if (m.pulsePositions) {
+                        Object.keys(m.pulsePositions).forEach(posKey => setInputByName(posKey, m.pulsePositions[posKey]));
+                    }
+                } else if (key === 'tongueImage') {
+                     if (m.tongueImage) {
+                        tongueImageDataUrl = m.tongueImage;
+                        tongueImagePreview.src = tongueImageDataUrl;
+                        tongueImagePreview.classList.remove('hidden');
+                        tongueImagePlaceholder.classList.add('hidden');
+                    } else {
+                        tongueImageDataUrl = null;
+                        tongueImagePreview.src = '';
+                        tongueImagePreview.classList.add('hidden');
+                        tongueImagePlaceholder.classList.remove('hidden');
+                    }
+                } else if (Array.isArray(m[key])) {
+                    setCheckboxGroup(key, m[key]);
+                } else if (document.querySelector(`input[name="${key}"]`)?.type === 'radio') {
+                    setCheckedValue(key, m[key]);
+                } else {
+                    const el = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
+                    if(el) el.value = m[key] || '';
+                }
+            });
+
+            const g = data.general || {};
+             Object.keys(g).forEach(key => {
+                if (Array.isArray(g[key])) {
+                    setCheckboxGroup(key, g[key]);
+                } else if (document.querySelector(`input[name="${key}"]`)) {
+                    const el = document.querySelector(`input[name="${key}"]`);
+                     if(el.type === 'radio') setCheckedValue(key, g[key]);
+                     else if (el.type === 'range') {el.value = g[key] || 5; painValueSpan.textContent = el.value;}
+                     else el.value = g[key] || '';
+                } else {
+                    setInputValue(key, g[key]);
+                }
+            });
+
+            if (data.seguimiento && Array.isArray(data.seguimiento)) {
+                data.seguimiento.forEach((session, index) => {
+                    const i = index + 1;
+                    if (i > 10) return;
+                    setInputValue(`session_${i}_date`, session.date);
+                    setInputValue(`session_${i}_symptoms`, session.symptoms);
+                    setInputValue(`session_${i}_status`, session.status);
+                    setInputValue(`session_${i}_treatment`, session.treatment);
+                });
+            }
+            
+            currentRecordNameSpan.textContent = data.personal.nombre || 'Ficha Cargada';
+            deleteFichaBtn.classList.remove('hidden');
+            deleteFichaBtn.disabled = false;
+            document.querySelector('.tab-button[data-tab="tab1"]').click();
+            showMessage(`Datos de "${data.personal.nombre}" cargados.`);
+        }
+        
+        function clearForm() {
+            fichaForm.reset();
+            currentRecordId = null;
+            document.getElementById('recordId').value = '';
+            currentRecordNameSpan.textContent = 'Nueva Ficha';
+            painLevelInput.value = 5;
+            painValueSpan.textContent = '5';
+            deleteFichaBtn.classList.add('hidden');
+            deleteFichaBtn.disabled = true;
+            tongueImageDataUrl = null;
+            tongueImagePreview.src = '';
+            tongueImagePreview.classList.add('hidden');
+            tongueImagePlaceholder.classList.remove('hidden');
+            tongueImageInput.value = '';
+            patientPhotoDataUrl = null;
+            patientPhotoPreview.src = '';
+            patientPhotoPreview.classList.add('hidden');
+            patientPhotoPlaceholder.classList.remove('hidden');
+            patientPhotoInput.value = '';
+
+            for (let i = 1; i <= 10; i++) {
+                document.getElementById(`session_${i}_date`).value = '';
+                document.getElementById(`session_${i}_symptoms`).value = '';
+                document.getElementById(`session_${i}_status`).value = '';
+                document.getElementById(`session_${i}_treatment`).value = '';
+            }
+            document.querySelector('.tab-button[data-tab="tab1"]').click();
+            showMessage("Formulario listo para una nueva ficha.");
+        }
+
+        async function initializeFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) throw new Error("Configuración de Firebase no encontrada.");
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+                else await signInAnonymously(auth);
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+                userInfo.textContent = `ID de Usuario: ${userId}`;
+                loadingOverlay.style.display = 'none';
+                startDataListener();
+            } catch (error) {
+                console.error("Error en Firebase:", error);
+                showMessage(`Error al iniciar: ${error.message}`, true);
+                loadingOverlay.style.display = 'none';
+            }
+        }
+
+        function startDataListener() {
+            const path = `/artifacts/${appId}/users/${userId}/fichas_clinicas_full`;
+            onSnapshot(query(collection(db, path)), (snapshot) => {
+                const fichas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderFichas(fichas.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+            }, error => {
+                console.error("Error al escuchar fichas:", error);
+                showMessage(`Error al cargar fichas: ${error.message}`, true);
+            });
+        }
+
+        function renderFichas(fichas) {
+            fichasList.innerHTML = '';
+            recordCountSpan.textContent = fichas.length;
+            noFichasMessage.classList.toggle('hidden', fichas.length > 0);
+            if(fichas.length === 0) noFichasMessage.textContent = 'No hay fichas guardadas.';
+            
+            fichas.forEach(ficha => {
+                const li = document.createElement('li');
+                li.className = 'cursor-pointer p-2 rounded-lg hover:bg-blue-100 transition duration-100 text-sm bg-gray-50 border shadow-sm';
+                li.dataset.id = ficha.id;
+                li.innerHTML = `<p class="font-semibold text-blue-800">${ficha.personal?.nombre || 'Paciente sin nombre'}</p>`;
+                li.addEventListener('click', () => fillForm(ficha));
+                fichasList.appendChild(li);
+            });
+        }
+
+        fichaForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = getFormData();
+            const id = document.getElementById('recordId').value || crypto.randomUUID();
+            if (!data.personal.nombre || !data.personal.motivo) {
+                return showMessage("Nombre y Motivo de Consulta son obligatorios.", true);
+            }
+            saveButton.textContent = 'Guardando...';
+            saveButton.disabled = true;
+            try {
+                const path = `/artifacts/${appId}/users/${userId}/fichas_clinicas_full`;
+                const docRef = doc(db, path, id);
+                const isNew = !currentRecordId;
+                const saveData = { ...data, lastUpdated: Date.now(), createdBy: userId };
+                if (isNew) saveData.createdAt = Date.now();
+                await setDoc(docRef, saveData, { merge: true });
+                currentRecordId = id;
+                document.getElementById('recordId').value = id;
+                currentRecordNameSpan.textContent = data.personal.nombre;
+                deleteFichaBtn.disabled = false;
+                deleteFichaBtn.classList.remove('hidden');
+                showMessage(`Ficha de ${data.personal.nombre} guardada.`);
+            } catch (error) {
+                console.error("Error al guardar:", error);
+                showMessage(`Error al guardar: ${error.message}`, true);
+            } finally {
+                saveButton.textContent = '💾 Guardar Ficha';
+                saveButton.disabled = false;
+            }
+        });
+
+        function flattenObject(obj, parent = '', res = {}) {
+            for(let key in obj){
+                const propName = parent ? `${parent}.${key}` : key;
+                const value = obj[key];
+
+                if(typeof value === 'object' && value !== null){
+                    if(Array.isArray(value) && key === 'seguimiento') { // Special handling for seguimiento
+                        value.forEach((session, index) => {
+                            Object.keys(session).forEach(sessionKey => {
+                                res[`${propName}.${index}.${sessionKey}`] = session[sessionKey];
+                            });
+                        });
+                    } else if (Array.isArray(value)) {
+                         res[propName] = value.join(',');
+                    } else {
+                        flattenObject(value, propName, res);
+                    }
+                } else {
+                    res[propName] = value;
+                }
+            }
+            return res;
+        }
+
+        function unflattenObject(data) {
+            const result = {};
+            for (const path in data) {
+                const keys = path.split('.');
+                let current = result;
+                for (let i = 0; i < keys.length - 1; i++) {
+                    const key = keys[i];
+                    const nextKey = keys[i + 1];
+                    if (!current[key]) {
+                        if (isFinite(nextKey)) { 
+                            current[key] = [];
+                        } else {
+                            current[key] = {};
+                        }
+                    }
+                    current = current[key];
+                }
+                const finalValue = (typeof data[path] === 'string' && data[path].includes(',')) ? data[path].split(',') : data[path];
+                current[keys[keys.length - 1]] = finalValue;
+            }
+            return result;
+        }
+
+        exportFichaBtn.addEventListener('click', () => {
+            const data = getFormData();
+            if (!data.personal.nombre) return showMessage("El nombre del paciente es requerido para exportar.", true);
+            
+            const exportData = JSON.parse(JSON.stringify(data));
+            if (exportData.mtc && exportData.mtc.tongueImage) {
+                delete exportData.mtc.tongueImage;
+            }
+            if (exportData.personal && exportData.personal.patientPhoto) {
+                delete exportData.personal.patientPhoto;
+            }
+
+            try {
+                const flattenedData = flattenObject(exportData);
+                const worksheet = XLSX.utils.json_to_sheet([flattenedData]);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Ficha");
+                XLSX.writeFile(workbook, `Ficha de ${data.personal.nombre.trim()}.xlsx`);
+                showMessage(`Ficha exportada con éxito.`);
+            } catch (error) {
+                console.error("Error al exportar:", error);
+                showMessage("Error al exportar la ficha.", true);
+            }
+        });
+
+        importFichaBtn.addEventListener('click', () => importFileInput.click());
+        importFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const workbook = XLSX.read(new Uint8Array(event.target.result), {type: 'array'});
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(worksheet);
+                    if (json.length === 0) throw new Error("El archivo Excel está vacío.");
+                    const unflattenedData = unflattenObject(json[0]);
+                    fillForm({ ...unflattenedData, id: null });
+                    showMessage(`Archivo "${file.name}" importado. Guarde para confirmar.`);
+                } catch (error) {
+                    console.error("Error al importar:", error);
+                    showMessage(`Error al importar: ${error.message}`, true);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            e.target.value = '';
+        });
+
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                document.getElementById(button.dataset.tab).classList.remove('hidden');
+                button.classList.add('active');
+            });
+        });
+
+        newFichaBtn.addEventListener('click', clearForm);
+        painLevelInput.addEventListener('input', (e) => { painValueSpan.textContent = e.target.value; });
+        
+        uploadTongueImageBtn.addEventListener('click', () => {
+            tongueImageInput.click();
+        });
+
+        tongueImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                tongueImageDataUrl = event.target.result;
+                tongueImagePreview.src = tongueImageDataUrl;
+                tongueImagePreview.classList.remove('hidden');
+                tongueImagePlaceholder.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        uploadPatientPhotoBtn.addEventListener('click', () => {
+            patientPhotoInput.click();
+        });
+
+        patientPhotoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                patientPhotoDataUrl = event.target.result;
+                patientPhotoPreview.src = patientPhotoDataUrl;
+                patientPhotoPreview.classList.remove('hidden');
+                patientPhotoPlaceholder.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        });
+
+
+        function createSessionRows(){
+            for (let i = 1; i <= 10; i++) {
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-12 gap-2 items-center';
+                row.innerHTML = `
+                    <div class="col-span-1 text-center font-semibold text-gray-700">${i}</div>
+                    <div class="col-span-2"><input type="date" id="session_${i}_date" class="w-full p-1 border rounded-md text-xs"></div>
+                    <div class="col-span-5"><textarea id="session_${i}_symptoms" rows="2" class="w-full p-1 border rounded-md text-xs"></textarea></div>
+                    <div class="col-span-2">
+                        <select id="session_${i}_status" class="w-full p-1 border rounded-md text-xs">
+                            <option value="">--</option>
+                            <option value="mejora">⬆️ Mejora</option>
+                            <option value="empeora">⬇️ Empeora</option>
+                            <option value="igual">➡️ Sigue Igual</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2"><textarea id="session_${i}_treatment" rows="2" class="w-full p-1 border rounded-md text-xs"></textarea></div>
+                `;
+                sessionRowsContainer.appendChild(row);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            createSessionRows();
+            initializeFirebase();
+        });
+    </script>
+</body>
+</html>
