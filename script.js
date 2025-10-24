@@ -58,6 +58,7 @@ const setCheckboxGroup = (name, values) => {
 function getFormData() {
     const personal = {
         nombre: document.getElementById('nombre').value.trim(),
+        rut: document.getElementById('rut').value.trim(),
         occupation: document.getElementById('occupation').value.trim(),
         dob: document.getElementById('dob').value,
         age: document.getElementById('age').value,
