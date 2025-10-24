@@ -9,17 +9,13 @@ const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial
 let db, auth, userId = '', currentRecordId = null, tongueImageDataUrl = null;
 
 const loadingOverlay = document.getElementById('loading-overlay');
-const userInfo = document.getElementById('user-info');
-const fichasList = document.getElementById('fichas-list');
 const fichaForm = document.getElementById('ficha-form');
 const messageBox = document.getElementById('message-box');
-const noFichasMessage = document.getElementById('no-fichas');
 const newFichaBtn = document.getElementById('new-ficha-btn');
 const deleteFichaBtn = document.getElementById('delete-ficha-btn');
 const exportFichaBtn = document.getElementById('export-ficha-btn');
 const importFileInput = document.getElementById('import-file-input');
 const importFichaBtn = document.getElementById('import-ficha-btn');
-const recordCountSpan = document.getElementById('record-count');
 const currentRecordNameSpan = document.getElementById('current-record-name');
 const saveButton = document.getElementById('save-button');
 const painValueSpan = document.getElementById('painValue');
@@ -298,41 +294,12 @@ async function initializeFirebase() {
         if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
         else await signInAnonymously(auth);
         userId = auth.currentUser?.uid || crypto.randomUUID();
-        userInfo.textContent = `ID de Usuario: ${userId}`;
         loadingOverlay.style.display = 'none';
-        startDataListener();
     } catch (error) {
         console.error("Error en Firebase:", error);
         showMessage(`Error al iniciar: ${error.message}`, true);
         loadingOverlay.style.display = 'none';
     }
-}
-
-function startDataListener() {
-    const path = `/artifacts/${appId}/users/${userId}/fichas_clinicas_full`;
-    onSnapshot(query(collection(db, path)), (snapshot) => {
-        const fichas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderFichas(fichas.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
-    }, error => {
-        console.error("Error al escuchar fichas:", error);
-        showMessage(`Error al cargar fichas: ${error.message}`, true);
-    });
-}
-
-function renderFichas(fichas) {
-    fichasList.innerHTML = '';
-    recordCountSpan.textContent = fichas.length;
-    noFichasMessage.classList.toggle('hidden', fichas.length > 0);
-    if(fichas.length === 0) noFichasMessage.textContent = 'No hay fichas guardadas.';
-
-    fichas.forEach(ficha => {
-        const li = document.createElement('li');
-        li.className = 'cursor-pointer p-2 rounded-lg hover:bg-blue-100 transition duration-100 text-sm bg-gray-50 border shadow-sm';
-        li.dataset.id = ficha.id;
-        li.innerHTML = `<p class="font-semibold text-blue-800">${ficha.personal?.nombre || 'Paciente sin nombre'}</p>`;
-        li.addEventListener('click', () => fillForm(ficha));
-        fichasList.appendChild(li);
-    });
 }
 
 fichaForm.addEventListener('submit', async (e) => {
