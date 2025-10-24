@@ -31,6 +31,7 @@ const patientPhotoPreview = document.getElementById('patient-photo-preview');
 const patientPhotoPlaceholder = document.getElementById('patient-photo-placeholder');
 const dobInput = document.getElementById('dob');
 const ageInput = document.getElementById('age');
+const calculateAgeBtn = document.getElementById('calculate-age-btn');
 
 let patientPhotoDataUrl = null;
 
@@ -458,7 +459,7 @@ function calculateAge() {
     }
 }
 
-dobInput.addEventListener('change', calculateAge);
+calculateAgeBtn.addEventListener('click', calculateAge);
 
 uploadTongueImageBtn.addEventListener('click', () => {
     tongueImageInput.click();
