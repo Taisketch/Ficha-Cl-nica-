@@ -29,6 +29,8 @@ const uploadPatientPhotoBtn = document.getElementById('upload-patient-photo-btn'
 const patientPhotoInput = document.getElementById('patient-photo-input');
 const patientPhotoPreview = document.getElementById('patient-photo-preview');
 const patientPhotoPlaceholder = document.getElementById('patient-photo-placeholder');
+const dobInput = document.getElementById('dob');
+const ageInput = document.getElementById('age');
 
 let patientPhotoDataUrl = null;
 
@@ -439,6 +441,24 @@ document.querySelectorAll('.tab-button').forEach(button => {
 
 newFichaBtn.addEventListener('click', clearForm);
 painLevelInput.addEventListener('input', (e) => { painValueSpan.textContent = e.target.value; });
+
+function calculateAge() {
+    const dobString = dobInput.value;
+    if (dobString) {
+        const dob = new Date(dobString);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+            age--;
+        }
+        ageInput.value = age >= 0 ? age : 0;
+    } else {
+        ageInput.value = '';
+    }
+}
+
+dobInput.addEventListener('change', calculateAge);
 
 uploadTongueImageBtn.addEventListener('click', () => {
     tongueImageInput.click();
