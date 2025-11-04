@@ -7,8 +7,6 @@
     <!-- Carga de Tailwind CSS para el estilo -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Librería SheetJS para manejo de archivos Excel -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         /* Estilos personalizados para un toque profesional */
         :root {
@@ -22,14 +20,14 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             transition: transform 0.3s ease;
         }
-        .tab-button.active { 
-            background-color: var(--primary-color); 
-            color: white; 
+        .tab-button.active {
+            background-color: var(--primary-color);
+            color: white;
             border-bottom-color: var(--primary-color);
         }
-        .section-header { 
-            border-left: 4px solid var(--primary-color); 
-            padding-left: 0.75rem; 
+        .section-header {
+            border-left: 4px solid var(--primary-color);
+            padding-left: 0.75rem;
         }
         .loading-overlay {
             position: fixed;
@@ -62,18 +60,18 @@
         <!-- Columna 1: Gestión de Fichas -->
         <div class="lg:col-span-1 bg-white p-4 rounded-xl card h-fit sticky top-4">
             <h2 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">Gestión de Fichas</h2>
-            
+
             <!-- Botones de Importar/Nueva Ficha -->
             <div class="space-y-3 mb-4">
                 <button id="new-ficha-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 shadow-md">
                     ➕ Nueva Ficha
                 </button>
-                <input type="file" id="import-file-input" accept=".xlsx, .xls" class="hidden">
+                <input type="file" id="import-file-input" accept=".json" class="hidden">
                 <button id="import-ficha-btn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 shadow-md">
-                    ⬆️ Importar Ficha (Excel)
+                    ⬆️ Importar Ficha (JSON)
                 </button>
             </div>
-            
+
             <div class="p-2 bg-gray-50 rounded-lg border">
                 <h3 class="text-md font-medium text-gray-700 mb-2">Fichas Guardadas (<span id="record-count">0</span>)</h3>
                 <ul id="fichas-list" class="space-y-2 max-h-96 overflow-y-auto">
@@ -99,7 +97,7 @@
                 <button data-tab="tab4" class="tab-button py-2 px-4 rounded-t-lg font-medium text-sm transition-colors duration-150">4. Zonas de Dolor</button>
                 <button data-tab="tab5" class="tab-button py-2 px-4 rounded-t-lg font-medium text-sm transition-colors duration-150">5. Seguimiento</button>
             </div>
-            
+
             <form id="ficha-form">
                 <input type="hidden" id="recordId" name="recordId">
 
@@ -180,11 +178,11 @@
                     <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg">
                         <h3 class="text-xl font-bold text-yellow-800 mb-2">Consentimiento Informado</h3>
                         <p class="text-sm text-yellow-700 mb-3">
-                            La Acupuntura consiste en la estimulación de puntos específicos del cuerpo, mediante la inserción de agujas finas, 
-                            estériles y desechables, con el fin de normalizar las funciones fisiológicas y de restaurar el desequilibrio del cuerpo. 
-                            
-                            La terapia en Medicina China no posee mayores efectos secundarios. Sin embargo, pueden presentarse algunos efectos 
-                            residuales y molestias como sensibilidad y hematomas en los puntos de inserción, mareos y somnolencia.  Por su parte, tras un 
+                            La Acupuntura consiste en la estimulación de puntos específicos del cuerpo, mediante la inserción de agujas finas,
+                            estériles y desechables, con el fin de normalizar las funciones fisiológicas y de restaurar el desequilibrio del cuerpo.
+
+                            La terapia en Medicina China no posee mayores efectos secundarios. Sin embargo, pueden presentarse algunos efectos
+                            residuales y molestias como sensibilidad y hematomas en los puntos de inserción, mareos y somnolencia.  Por su parte, tras un
                             masaje con ventosas, la aparición de hematomas es normal.
                         </p>
                         <p class="text-sm text-yellow-700 mb-3">
@@ -375,7 +373,7 @@
                 <div id="tab3" class="tab-content hidden space-y-4">
                     <h2 class="section-header text-xl font-semibold text-gray-700 mb-4">3. Cuestionario de Síntomas</h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        
+
                         <div class="symptom-card">
                             <h3 class="symptom-title">Frio / Calor</h3>
                             <div class="space-y-1"><label class="flex items-center"><input type="radio" name="temp" value="Frio" class="form-radio mr-2"> Frio</label><label class="flex items-center"><input type="radio" name="temp" value="Calor" class="form-radio mr-2"> Calor</label><label class="flex items-center"><input type="radio" name="temp" value="Calor y Frio" class="form-radio mr-2"> Calor y frío</label></div>
@@ -435,7 +433,7 @@
                                 <label class="flex items-center"><input type="checkbox" name="thirst_temp" value="Líquidos Fríos" class="mr-2"> Fríos</label>
                             </div>
                         </div>
-                        
+
                         <div class="symptom-card">
                             <h3 class="symptom-title">Heces</h3>
                              <div class="grid grid-cols-2 gap-1">
@@ -467,7 +465,7 @@
                             </div>
                             <input type="text" name="urine_color" placeholder="Color" class="w-full mt-2 p-2 border border-gray-200 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
                         </div>
-                        
+
                         <div class="symptom-card md:col-span-3">
                             <h3 class="symptom-title">Menstruación</h3>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -579,7 +577,7 @@
 
                     </div>
                 </div>
-                
+
                 <!-- PESTAÑA 4: ZONAS DE DOLOR -->
                 <div id="tab4" class="tab-content hidden space-y-6">
                     <h2 class="section-header text-xl font-semibold text-gray-700 mb-4">4. Zonas y Nivel de Dolor</h2>
@@ -620,7 +618,7 @@
                 <!-- Botones de Acción (Guardar/Eliminar/Exportar) -->
                 <div class="mt-8 flex justify-end space-x-4">
                     <button type="button" id="export-ficha-btn" class="bg-blue-300 hover:bg-blue-400 text-white font-bold py-3 px-6 rounded-lg transition duration-150 shadow-md">
-                        📥 Exportar Ficha (Excel)
+                        📥 Exportar Ficha (JSON)
                     </button>
                     <button type="button" id="delete-ficha-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition duration-150 shadow-md hidden" disabled>
                         Eliminar Ficha
@@ -642,7 +640,7 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
+
         let db, auth, userId = '', currentRecordId = null, tongueImageDataUrl = null;
 
         const loadingOverlay = document.getElementById('loading-overlay');
@@ -687,9 +685,9 @@
 
         const getCheckedValues = (name) => Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(c => c.value);
         const setCheckedValue = (name, value) => { document.querySelectorAll(`input[name="${name}"]`).forEach(el => el.checked = el.value === value); };
-        const setCheckboxGroup = (name, values) => { 
+        const setCheckboxGroup = (name, values) => {
             const valuesArray = Array.isArray(values) ? values : (typeof values === 'string' ? values.split(',') : []);
-            document.querySelectorAll(`input[name="${name}"]`).forEach(el => el.checked = valuesArray.includes(el.value)); 
+            document.querySelectorAll(`input[name="${name}"]`).forEach(el => el.checked = valuesArray.includes(el.value));
         };
 
         function getFormData() {
@@ -745,7 +743,7 @@
                     leftChi: document.querySelector('input[name="leftChi"]').value.trim(),
                 }
             };
-            
+
             const general = {
                 temp: document.querySelector('input[name="temp"]:checked')?.value || '',
                 sweat_suda: getCheckedValues('sweat_suda'),
@@ -798,7 +796,7 @@
 
             return { personal, mtc, general, seguimiento };
         }
-        
+
         function fillForm(data) {
             if (!data.personal || !data.mtc || !data.general) {
                  showMessage("Error: El archivo importado no tiene la estructura de ficha clínica esperada.", true);
@@ -887,14 +885,14 @@
                     setInputValue(`session_${i}_treatment`, session.treatment);
                 });
             }
-            
+
             currentRecordNameSpan.textContent = data.personal.nombre || 'Ficha Cargada';
             deleteFichaBtn.classList.remove('hidden');
             deleteFichaBtn.disabled = false;
             document.querySelector('.tab-button[data-tab="tab1"]').click();
             showMessage(`Datos de "${data.personal.nombre}" cargados.`);
         }
-        
+
         function clearForm() {
             fichaForm.reset();
             currentRecordId = null;
@@ -960,7 +958,7 @@
             recordCountSpan.textContent = fichas.length;
             noFichasMessage.classList.toggle('hidden', fichas.length > 0);
             if(fichas.length === 0) noFichasMessage.textContent = 'No hay fichas guardadas.';
-            
+
             fichas.forEach(ficha => {
                 const li = document.createElement('li');
                 li.className = 'cursor-pointer p-2 rounded-lg hover:bg-blue-100 transition duration-100 text-sm bg-gray-50 border shadow-sm';
@@ -1002,71 +1000,21 @@
             }
         });
 
-        function flattenObject(obj, parent = '', res = {}) {
-            for(let key in obj){
-                const propName = parent ? `${parent}.${key}` : key;
-                const value = obj[key];
-
-                if(typeof value === 'object' && value !== null){
-                    if(Array.isArray(value) && key === 'seguimiento') { // Special handling for seguimiento
-                        value.forEach((session, index) => {
-                            Object.keys(session).forEach(sessionKey => {
-                                res[`${propName}.${index}.${sessionKey}`] = session[sessionKey];
-                            });
-                        });
-                    } else if (Array.isArray(value)) {
-                         res[propName] = value.join(',');
-                    } else {
-                        flattenObject(value, propName, res);
-                    }
-                } else {
-                    res[propName] = value;
-                }
-            }
-            return res;
-        }
-
-        function unflattenObject(data) {
-            const result = {};
-            for (const path in data) {
-                const keys = path.split('.');
-                let current = result;
-                for (let i = 0; i < keys.length - 1; i++) {
-                    const key = keys[i];
-                    const nextKey = keys[i + 1];
-                    if (!current[key]) {
-                        if (isFinite(nextKey)) { 
-                            current[key] = [];
-                        } else {
-                            current[key] = {};
-                        }
-                    }
-                    current = current[key];
-                }
-                const finalValue = (typeof data[path] === 'string' && data[path].includes(',')) ? data[path].split(',') : data[path];
-                current[keys[keys.length - 1]] = finalValue;
-            }
-            return result;
-        }
-
         exportFichaBtn.addEventListener('click', () => {
             const data = getFormData();
             if (!data.personal.nombre) return showMessage("El nombre del paciente es requerido para exportar.", true);
-            
-            const exportData = JSON.parse(JSON.stringify(data));
-            if (exportData.mtc && exportData.mtc.tongueImage) {
-                delete exportData.mtc.tongueImage;
-            }
-            if (exportData.personal && exportData.personal.patientPhoto) {
-                delete exportData.personal.patientPhoto;
-            }
 
             try {
-                const flattenedData = flattenObject(exportData);
-                const worksheet = XLSX.utils.json_to_sheet([flattenedData]);
-                const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Ficha");
-                XLSX.writeFile(workbook, `Ficha de ${data.personal.nombre.trim()}.xlsx`);
+                const jsonData = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Ficha de ${data.personal.nombre.trim()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
                 showMessage(`Ficha exportada con éxito.`);
             } catch (error) {
                 console.error("Error al exportar:", error);
@@ -1081,19 +1029,16 @@
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
-                    const workbook = XLSX.read(new Uint8Array(event.target.result), {type: 'array'});
-                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(worksheet);
-                    if (json.length === 0) throw new Error("El archivo Excel está vacío.");
-                    const unflattenedData = unflattenObject(json[0]);
-                    fillForm({ ...unflattenedData, id: null });
+                    const fileContent = event.target.result;
+                    const jsonData = JSON.parse(fileContent);
+                    fillForm({ ...jsonData, id: null });
                     showMessage(`Archivo "${file.name}" importado. Guarde para confirmar.`);
                 } catch (error) {
                     console.error("Error al importar:", error);
                     showMessage(`Error al importar: ${error.message}`, true);
                 }
             };
-            reader.readAsArrayBuffer(file);
+            reader.readAsText(file);
             e.target.value = '';
         });
 
@@ -1108,7 +1053,7 @@
 
         newFichaBtn.addEventListener('click', clearForm);
         painLevelInput.addEventListener('input', (e) => { painValueSpan.textContent = e.target.value; });
-        
+
         uploadTongueImageBtn.addEventListener('click', () => {
             tongueImageInput.click();
         });
@@ -1126,7 +1071,7 @@
             };
             reader.readAsDataURL(file);
         });
-        
+
         uploadPatientPhotoBtn.addEventListener('click', () => {
             patientPhotoInput.click();
         });
