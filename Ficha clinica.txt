@@ -78,12 +78,6 @@
                 </button>
             </div>
 
-            <div class="p-2 bg-gray-50 rounded-lg border">
-                <h3 class="text-md font-medium text-gray-700 mb-2">Fichas Guardadas (<span id="record-count">0</span>)</h3>
-                <ul id="fichas-list" class="space-y-2 max-h-96 overflow-y-auto">
-                    <li id="no-fichas" class="text-gray-500 text-center text-sm">Cargando...</li>
-                </ul>
-            </div>
             <p id="user-info" class="mt-4 text-xs text-gray-500 break-all">
                 ID de Usuario: Cargando...
             </p>
@@ -651,16 +645,13 @@
 
         const loadingOverlay = document.getElementById('loading-overlay');
         const userInfo = document.getElementById('user-info');
-        const fichasList = document.getElementById('fichas-list');
         const fichaForm = document.getElementById('ficha-form');
         const messageBox = document.getElementById('message-box');
-        const noFichasMessage = document.getElementById('no-fichas');
         const newFichaBtn = document.getElementById('new-ficha-btn');
         const deleteFichaBtn = document.getElementById('delete-ficha-btn');
         const exportFichaBtn = document.getElementById('export-ficha-btn');
         const importFileInput = document.getElementById('import-file-input');
         const importFichaBtn = document.getElementById('import-ficha-btn');
-        const recordCountSpan = document.getElementById('record-count');
         const currentRecordNameSpan = document.getElementById('current-record-name');
         const saveButton = document.getElementById('save-button');
         const painValueSpan = document.getElementById('painValue');
@@ -940,39 +931,11 @@
                 userId = auth.currentUser?.uid || crypto.randomUUID();
                 userInfo.textContent = `ID de Usuario: ${userId}`;
                 loadingOverlay.style.display = 'none';
-                startDataListener();
             } catch (error) {
                 console.error("Error en Firebase:", error);
                 showMessage(`Error al iniciar: ${error.message}`, true);
                 loadingOverlay.style.display = 'none';
             }
-        }
-
-        function startDataListener() {
-            const path = `/artifacts/${appId}/users/${userId}/fichas_clinicas_full`;
-            onSnapshot(query(collection(db, path)), (snapshot) => {
-                const fichas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderFichas(fichas.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
-            }, error => {
-                console.error("Error al escuchar fichas:", error);
-                showMessage(`Error al cargar fichas: ${error.message}`, true);
-            });
-        }
-
-        function renderFichas(fichas) {
-            fichasList.innerHTML = '';
-            recordCountSpan.textContent = fichas.length;
-            noFichasMessage.classList.toggle('hidden', fichas.length > 0);
-            if(fichas.length === 0) noFichasMessage.textContent = 'No hay fichas guardadas.';
-
-            fichas.forEach(ficha => {
-                const li = document.createElement('li');
-                li.className = 'cursor-pointer p-2 rounded-lg hover:bg-green-100 transition duration-100 text-sm bg-gray-50 border shadow-sm';
-                li.dataset.id = ficha.id;
-                li.innerHTML = `<p class="font-semibold text-green-800">${ficha.personal?.nombre || 'Paciente sin nombre'}</p>`;
-                li.addEventListener('click', () => fillForm(ficha));
-                fichasList.appendChild(li);
-            });
         }
 
         fichaForm.addEventListener('submit', async (e) => {
