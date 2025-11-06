@@ -7,8 +7,6 @@
     <!-- Carga de Tailwind CSS para el estilo -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Librería SheetJS para manejo de archivos Excel -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         /* Estilos personalizados para un toque profesional */
         :root {
@@ -83,9 +81,9 @@
                 <button id="new-ficha-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 shadow-md">
                     ➕ Nueva Ficha
                 </button>
-                <input type="file" id="import-file-input" accept=".xlsx, .xls" class="hidden">
+                <input type="file" id="import-file-input" accept=".json" class="hidden">
                 <button id="import-ficha-btn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 shadow-md">
-                    ⬆️ Importar Ficha (Excel)
+                    ⬆️ Importar Ficha (JSON)
                 </button>
             </div>
 
@@ -634,7 +632,7 @@
                 <!-- Botones de Acción (Guardar/Eliminar/Exportar) -->
                 <div class="mt-8 flex justify-end space-x-4">
                     <button type="button" id="export-ficha-btn" class="bg-blue-300 hover:bg-blue-400 text-white font-bold py-3 px-6 rounded-lg transition duration-150 shadow-md">
-                        📥 Exportar Ficha (Excel)
+                        📥 Exportar Ficha (JSON)
                     </button>
                     <button type="button" id="delete-ficha-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition duration-150 shadow-md hidden" disabled>
                         Eliminar Ficha
@@ -1016,75 +1014,27 @@
             }
         });
 
-        function flattenObject(obj, parent = '', res = {}) {
-            for(let key in obj){
-                const propName = parent ? `${parent}.${key}` : key;
-                const value = obj[key];
-
-                if(typeof value === 'object' && value !== null){
-                    if(Array.isArray(value) && key === 'seguimiento') { // Special handling for seguimiento
-                        value.forEach((session, index) => {
-                            Object.keys(session).forEach(sessionKey => {
-                                res[`${propName}.${index}.${sessionKey}`] = session[sessionKey];
-                            });
-                        });
-                    } else if (Array.isArray(value)) {
-                         res[propName] = value.join(',');
-                    } else {
-                        flattenObject(value, propName, res);
-                    }
-                } else {
-                    res[propName] = value;
-                }
-            }
-            return res;
-        }
-
-        function unflattenObject(data) {
-            const result = {};
-            for (const path in data) {
-                const keys = path.split('.');
-                let current = result;
-                for (let i = 0; i < keys.length - 1; i++) {
-                    const key = keys[i];
-                    const nextKey = keys[i + 1];
-                    if (!current[key]) {
-                        if (isFinite(nextKey)) {
-                            current[key] = [];
-                        } else {
-                            current[key] = {};
-                        }
-                    }
-                    current = current[key];
-                }
-                const finalValue = (typeof data[path] === 'string' && data[path].includes(',')) ? data[path].split(',') : data[path];
-                current[keys[keys.length - 1]] = finalValue;
-            }
-            return result;
-        }
-
         exportFichaBtn.addEventListener('click', () => {
             const data = getFormData();
-            if (!data.personal.nombre) return showMessage("El nombre del paciente es requerido para exportar.", true);
-
-            const exportData = JSON.parse(JSON.stringify(data));
-            if (exportData.mtc && exportData.mtc.tongueImage) {
-                delete exportData.mtc.tongueImage;
-            }
-            if (exportData.personal && exportData.personal.patientPhoto) {
-                delete exportData.personal.patientPhoto;
+            if (!data.personal.nombre) {
+                return showMessage("El nombre del paciente es requerido para exportar.", true);
             }
 
             try {
-                const flattenedData = flattenObject(exportData);
-                const worksheet = XLSX.utils.json_to_sheet([flattenedData]);
-                const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Ficha");
-                XLSX.writeFile(workbook, `Ficha de ${data.personal.nombre.trim()}.xlsx`);
-                showMessage(`Ficha exportada con éxito.`);
+                const jsonData = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Ficha de ${data.personal.nombre.trim()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMessage('Ficha exportada con éxito.');
             } catch (error) {
-                console.error("Error al exportar:", error);
-                showMessage("Error al exportar la ficha.", true);
+                console.error("Error al exportar a JSON:", error);
+                showMessage("Error al exportar la ficha a JSON.", true);
             }
         });
 
@@ -1095,19 +1045,15 @@
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
-                    const workbook = XLSX.read(new Uint8Array(event.target.result), {type: 'array'});
-                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(worksheet);
-                    if (json.length === 0) throw new Error("El archivo Excel está vacío.");
-                    const unflattenedData = unflattenObject(json[0]);
-                    fillForm({ ...unflattenedData, id: null });
+                    const data = JSON.parse(event.target.result);
+                    fillForm({ ...data, id: null });
                     showMessage(`Archivo "${file.name}" importado. Guarde para confirmar.`);
                 } catch (error) {
-                    console.error("Error al importar:", error);
-                    showMessage(`Error al importar: ${error.message}`, true);
+                    console.error("Error al importar JSON:", error);
+                    showMessage(`Error al importar el archivo JSON: ${error.message}`, true);
                 }
             };
-            reader.readAsArrayBuffer(file);
+            reader.readAsText(file);
             e.target.value = '';
         });
 
